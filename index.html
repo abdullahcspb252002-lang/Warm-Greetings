@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minhas House Access</title>
+    <style>
+        /* --- GEN Z / CYBERPUNK STYLING --- */
+        :root {
+            --neon-green: #0aff0a;
+            --neon-blue: #0acaff;
+            --bg-color: #050505;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--neon-green);
+            font-family: 'Courier New', Courier, monospace;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- THE CURTAINS (Overlay) --- */
+        #curtain-left, #curtain-right {
+            position: fixed;
+            top: 0;
+            width: 50%;
+            height: 100%;
+            background: #000;
+            z-index: 100;
+            transition: transform 2s cubic-bezier(0.19, 1, 0.22, 1); /* Dramatic ease */
+            display: none; /* Hidden until the end sequence */
+        }
+        #curtain-left { left: 0; border-right: 2px solid var(--neon-green); }
+        #curtain-right { right: 0; border-left: 2px solid var(--neon-green); }
+
+        .curtain-open-left { transform: translateX(-100%); }
+        .curtain-open-right { transform: translateX(100%); }
+
+        /* --- SCANNER UI --- */
+        #ui-layer {
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .fingerprint-box {
+            width: 120px;
+            height: 160px;
+            border: 2px solid rgba(10, 255, 10, 0.3);
+            border-radius: 60px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background: rgba(0, 20, 0, 0.5);
+            box-shadow: 0 0 20px rgba(10, 255, 10, 0.1);
+            transition: all 0.3s;
+        }
+
+        .fingerprint-icon {
+            font-size: 4rem;
+            filter: grayscale(100%) opacity(0.5);
+            transition: filter 0.5s;
+        }
+
+        /* Scanning Beam */
+        .scan-beam {
+            position: absolute;
+            top: -20%;
+            left: 0;
+            width: 100%;
+            height: 10px;
+            background: var(--neon-green);
+            box-shadow: 0 0 15px var(--neon-green);
+            opacity: 0;
+        }
+
+        .scanning .scan-beam {
+            opacity: 1;
+            animation: scanMove 1.5s linear infinite;
+        }
+
+        .scanning .fingerprint-icon {
+            filter: grayscale(0%) opacity(1) drop-shadow(0 0 10px var(--neon-green));
+        }
+
+        @keyframes scanMove {
+            0% { top: -20%; }
+            100% { top: 120%; }
+        }
+
+        /* --- TEXT DISPLAY --- */
+        #status-text {
+            margin-top: 30px;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+            min-height: 60px;
+            padding: 0 20px;
+            text-shadow: 0 0 5px var(--neon-green);
+        }
+
+        .glitch-text {
+            animation: glitch 0.3s infinite;
+            color: var(--neon-blue);
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        .big-countdown {
+            font-size: 5rem;
+            color: red;
+            font-weight: 900;
+            text-shadow: 0 0 20px red;
+            animation: pulse 0.5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
+        }
+
+        /* --- FINAL REVEAL CONTENT --- */
+        #final-reveal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle, #222 0%, #000 100%);
+            z-index: 1; /* Behind UI initially */
+            opacity: 0;
+            transition: opacity 1s;
+        }
+
+        #final-reveal.visible {
+            opacity: 1;
+        }
+        
+        #final-reveal h1 {
+            font-size: 3rem;
+            color: #fff;
+            text-shadow: 0 0 20px #fff;
+            margin: 0;
+        }
+        
+        #final-reveal p {
+            color: #888;
+            font-size: 1.2rem;
+            margin-top: 10px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Audio Element for Blast Effect -->
+    <!-- Make sure blast.mp3 is in the same folder! -->
+    <audio id="sfx-blast" src="blast.mp3" preload="auto"></audio>
+
+    <!-- Curtains for the final effect -->
+    <div id="curtain-left"></div>
+    <div id="curtain-right"></div>
+
+    <!-- Main Scanner Interface -->
+    <div id="ui-layer">
+        <div class="fingerprint-box" id="scanner-btn">
+            <div class="scan-beam"></div>
+            <div class="fingerprint-icon">👆</div>
+        </div>
+        <div id="status-text">Ready for Bio-Auth</div>
+    </div>
+
+    <!-- The content revealed behind the scanner -->
+    <div id="final-reveal">
+        <h1>MINHAS HOUSE</h1>
+        <p>GEN Z REPRESENTATION</p>
+    </div>
+
+    <script>
+        const scannerBtn = document.getElementById('scanner-btn');
+        const statusText = document.getElementById('status-text');
+        const sfxBlast = document.getElementById('sfx-blast');
+        const curtainLeft = document.getElementById('curtain-left');
+        const curtainRight = document.getElementById('curtain-right');
+        const uiLayer = document.getElementById('ui-layer');
+        const finalReveal = document.getElementById('final-reveal');
+
+        let isScanning = false;
+
+        // Dialogue Arrays
+        // Part 1: Professional
+        const speechPart1 = [
+            "Accessing Database...",
+            "Identity Confirmed.",
+            "Welcome, Sir Rao Asif.",
+            "Director of Punjab Group of Colleges.",
+            "Behold, The Minhas House.",
+            "And the culture representing Generation Z.",
+            "We offer you warm greetings."
+        ];
+
+        // Part 2: Robotic Countdown
+        const speechPart2 = [
+            "Opening Protocol Initiated.",
+            "3",
+            "2",
+            "1"
+        ];
+
+        // START INTERACTION
+        // Supports both Touch (Mobile) and Click (PC)
+        scannerBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startSequence(); });
+        scannerBtn.addEventListener('mousedown', startSequence);
+
+        function startSequence() {
+            if (isScanning) return;
+            isScanning = true;
+
+            // 1. Visual Scan Effect
+            scannerBtn.classList.add('scanning');
+            statusText.innerText = "Scanning Biometrics...";
+            statusText.classList.add('glitch-text');
+
+            // 2. Wait 2 seconds, then start voice
+            setTimeout(() => {
+                scannerBtn.classList.remove('scanning');
+                statusText.classList.remove('glitch-text');
+                runDialogue();
+            }, 2000);
+        }
+
+        async function runDialogue() {
+            // -- PART 1: PROFESSIONAL VOICE --
+            for (let line of speechPart1) {
+                statusText.innerText = line;
+                await speak(line, 0.9, 0.8); // Slightly slower, slightly deeper for authority
+                await wait(400); // Small pause between sentences
+            }
+
+            // -- PART 2: THE BUILD UP --
+            statusText.innerText = "INITIATING CURTAINS...";
+            statusText.style.color = "red";
+            await speak("We'll be opening the curtains in", 1.0, 0.8);
+            
+            // -- PART 3: COUNTDOWN (ROBOTIC & LOUD) --
+            const countdown = ["3", "2", "1"];
+            
+            for (let num of countdown) {
+                statusText.innerText = num;
+                statusText.className = "big-countdown"; // Make text huge
+                // Pitch 0.1 is extremely deep/robotic. Rate 0.6 is slow and heavy.
+                await speak(num, 0.6, 0.1); 
+            }
+
+            // -- PART 4: THE BLAST & REVEAL --
+            triggerBlast();
+        }
+
+        function triggerBlast() {
+            statusText.innerText = "ACCESS GRANTED";
+            
+            // Play Sound
+            sfxBlast.volume = 1.0;
+            sfxBlast.play().catch(e => console.log("Audio play failed:", e));
+
+            // Activate Curtains
+            curtainLeft.style.display = 'block';
+            curtainRight.style.display = 'block';
+            
+            // Immediate visual update to setup curtains
+            setTimeout(() => {
+                curtainLeft.classList.add('curtain-open-left');
+                curtainRight.classList.add('curtain-open-right');
+                uiLayer.style.opacity = '0'; // Hide the scanner
+                finalReveal.classList.add('visible'); // Show the logo behind
+            }, 100);
+        }
+
+        // --- SPEECH ENGINE ---
+        function speak(text, rate, pitch) {
+            return new Promise(resolve => {
+                // Cancel any ongoing speech
+                window.speechSynthesis.cancel();
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                // VOICE SELECTION LOGIC (UPDATED FOR MALE PRIORITY)
+                const voices = window.speechSynthesis.getVoices();
+                
+                // Priority List:
+                // 1. "Daniel" (Best iOS Male Voice)
+                // 2. "Google UK English Male" (Best Android Male Voice)
+                // 3. "Microsoft David" (Best PC Male Voice)
+                // 4. Any voice with "Male" in the name
+                const preferredVoice = voices.find(v => 
+                    v.name.includes('Daniel') || 
+                    v.name.includes('Google UK English Male') || 
+                    v.name.includes('Microsoft David') ||
+                    (v.name.includes('Male') && v.lang.includes('en'))
+                );
+
+                if (preferredVoice) utterance.voice = preferredVoice;
+
+                utterance.rate = rate;
+                utterance.pitch = pitch;
+                utterance.volume = 1.0; // Max volume
+
+                utterance.onend = resolve;
+                utterance.onerror = resolve; // Continue even if error
+
+                window.speechSynthesis.speak(utterance);
+            });
+        }
+
+        // Helper to wait in milliseconds
+        function wait(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Preload voices
+        window.speechSynthesis.getVoices();
+    </script>
+</body>
+</html>

@@ -50,6 +50,7 @@
             flex-direction: column;
             align-items: center;
             width: 100%;
+            transition: opacity 0.5s;
         }
 
         .fingerprint-box {
@@ -65,12 +66,14 @@
             background: rgba(0, 20, 0, 0.5);
             box-shadow: 0 0 20px rgba(10, 255, 10, 0.1);
             transition: all 0.3s;
+            cursor: pointer;
         }
 
         .fingerprint-icon {
             font-size: 4rem;
             filter: grayscale(100%) opacity(0.5);
             transition: filter 0.5s;
+            user-select: none;
         }
 
         /* Scanning Beam */
@@ -109,6 +112,7 @@
             min-height: 60px;
             padding: 0 20px;
             text-shadow: 0 0 5px var(--neon-green);
+            transition: all 0.3s ease;
         }
 
         .glitch-text {
@@ -127,17 +131,34 @@
             100% { transform: translate(0); }
         }
 
+        /* --- MASSIVE COUNTDOWN STYLE --- */
         .big-countdown {
-            font-size: 5rem;
-            color: red;
+            position: fixed; /* Breaks out of layout to cover screen */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 30vw !important; /* Huge responsive size */
+            color: #ff0000 !important;
             font-weight: 900;
-            text-shadow: 0 0 20px red;
-            animation: pulse 0.5s infinite alternate;
+            text-shadow: 
+                0 0 20px rgba(255, 0, 0, 0.8),
+                0 0 50px rgba(255, 0, 0, 0.6),
+                0 0 100px rgba(255, 0, 0, 0.4);
+            animation: zoomPulse 0.8s infinite;
+            z-index: 200;
+            background: rgba(0,0,0,0.7); /* Darken bg behind numbers */
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 !important;
         }
 
-        @keyframes pulse {
-            from { transform: scale(1); }
-            to { transform: scale(1.1); }
+        @keyframes zoomPulse {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
         }
 
         /* --- FINAL REVEAL CONTENT --- */
@@ -166,12 +187,14 @@
             color: #fff;
             text-shadow: 0 0 20px #fff;
             margin: 0;
+            text-align: center;
         }
         
         #final-reveal p {
             color: #888;
             font-size: 1.2rem;
             margin-top: 10px;
+            text-align: center;
         }
 
     </style>
@@ -179,7 +202,7 @@
 <body>
 
     <!-- Audio Element for Blast Effect -->
-    <!-- Make sure blast.mp3 is in the same folder! -->
+    <!-- Ensure blast.mp3 is available or text will just display -->
     <audio id="sfx-blast" src="blast.mp3" preload="auto"></audio>
 
     <!-- Curtains for the final effect -->
@@ -213,7 +236,6 @@
         let isScanning = false;
 
         // Dialogue Arrays
-        // Part 1: Professional
         const speechPart1 = [
             "Accessing Database...",
             "Identity Confirmed.",
@@ -224,16 +246,7 @@
             "We offer you warm greetings."
         ];
 
-        // Part 2: Robotic Countdown
-        const speechPart2 = [
-            "Opening Protocol Initiated.",
-            "3",
-            "2",
-            "1"
-        ];
-
         // START INTERACTION
-        // Supports both Touch (Mobile) and Click (PC)
         scannerBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startSequence(); });
         scannerBtn.addEventListener('mousedown', startSequence);
 
@@ -258,8 +271,8 @@
             // -- PART 1: PROFESSIONAL VOICE --
             for (let line of speechPart1) {
                 statusText.innerText = line;
-                await speak(line, 0.9, 0.8); // Slightly slower, slightly deeper for authority
-                await wait(400); // Small pause between sentences
+                await speak(line, 0.9, 0.8);
+                await wait(400); 
             }
 
             // -- PART 2: THE BUILD UP --
@@ -267,23 +280,32 @@
             statusText.style.color = "red";
             await speak("We'll be opening the curtains in", 1.0, 0.8);
             
-            // -- PART 3: COUNTDOWN (ROBOTIC & LOUD) --
+            // -- PART 3: MASSIVE COUNTDOWN --
+            // Hide the fingerprint button so only numbers show
+            scannerBtn.style.opacity = '0';
+            
             const countdown = ["3", "2", "1"];
             
             for (let num of countdown) {
                 statusText.innerText = num;
-                statusText.className = "big-countdown"; // Make text huge
-                // Pitch 0.1 is extremely deep/robotic. Rate 0.6 is slow and heavy.
-                await speak(num, 0.6, 0.1); 
+                statusText.className = "big-countdown"; // Activates the massive fixed position CSS
+                
+                // Voice: Deep and slow
+                speak(num, 0.8, 0.5); 
+                
+                // Wait for animation (0.8s + small buffer)
+                await wait(1000);
             }
+
+            // Remove countdown class before showing access granted
+            statusText.className = ""; 
+            statusText.style.display = 'none'; // Hide text completely for the reveal
 
             // -- PART 4: THE BLAST & REVEAL --
             triggerBlast();
         }
 
         function triggerBlast() {
-            statusText.innerText = "ACCESS GRANTED";
-            
             // Play Sound
             sfxBlast.volume = 1.0;
             sfxBlast.play().catch(e => console.log("Audio play failed:", e));
@@ -292,31 +314,23 @@
             curtainLeft.style.display = 'block';
             curtainRight.style.display = 'block';
             
-            // Immediate visual update to setup curtains
+            // Immediate visual update
             setTimeout(() => {
                 curtainLeft.classList.add('curtain-open-left');
                 curtainRight.classList.add('curtain-open-right');
-                uiLayer.style.opacity = '0'; // Hide the scanner
-                finalReveal.classList.add('visible'); // Show the logo behind
+                uiLayer.style.display = 'none'; // Remove scanner layer entirely
+                finalReveal.classList.add('visible'); // Show the logo
             }, 100);
         }
 
         // --- SPEECH ENGINE ---
         function speak(text, rate, pitch) {
             return new Promise(resolve => {
-                // Cancel any ongoing speech
                 window.speechSynthesis.cancel();
-
                 const utterance = new SpeechSynthesisUtterance(text);
                 
-                // VOICE SELECTION LOGIC (UPDATED FOR MALE PRIORITY)
+                // Attempt to find a deep male voice
                 const voices = window.speechSynthesis.getVoices();
-                
-                // Priority List:
-                // 1. "Daniel" (Best iOS Male Voice)
-                // 2. "Google UK English Male" (Best Android Male Voice)
-                // 3. "Microsoft David" (Best PC Male Voice)
-                // 4. Any voice with "Male" in the name
                 const preferredVoice = voices.find(v => 
                     v.name.includes('Daniel') || 
                     v.name.includes('Google UK English Male') || 
@@ -328,21 +342,25 @@
 
                 utterance.rate = rate;
                 utterance.pitch = pitch;
-                utterance.volume = 1.0; // Max volume
+                utterance.volume = 1.0;
 
-                utterance.onend = resolve;
-                utterance.onerror = resolve; // Continue even if error
-
-                window.speechSynthesis.speak(utterance);
+                // Resolve immediately for countdown to allow animation sync, 
+                // but for long text wait for end.
+                if(text.length < 2) {
+                    window.speechSynthesis.speak(utterance);
+                    resolve(); 
+                } else {
+                    utterance.onend = resolve;
+                    utterance.onerror = resolve;
+                    window.speechSynthesis.speak(utterance);
+                }
             });
         }
 
-        // Helper to wait in milliseconds
         function wait(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // Preload voices
         window.speechSynthesis.getVoices();
     </script>
 </body>
